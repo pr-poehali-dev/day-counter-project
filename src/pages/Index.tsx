@@ -8,6 +8,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import Icon from '@/components/ui/icon';
+import { useRealtime } from '@/lib/realtime';
+import type { Participant as RealtimeParticipant } from '@/lib/realtime';
+import RealtimeParticipants from '@/components/RealtimeParticipants';
 
 interface Participant {
   id: string;
@@ -50,17 +53,58 @@ const Index = () => {
   const [secretWord, setSecretWord] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+  const realtime = useRealtime();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('valeraCounter');
     if (saved) {
       setParticipants(JSON.parse(saved));
     }
+    
+    // Получаем ID текущего пользователя
+    const userId = localStorage.getItem('current_user_id');
+    if (userId) {
+      setCurrentUserId(userId);
+      // Пингуем активность каждые 30 секунд
+      const pingInterval = setInterval(() => {
+        realtime.pingActivity(userId);
+      }, 30000);
+      
+      return () => clearInterval(pingInterval);
+    }
   }, []);
 
   useEffect(() => {
     localStorage.setItem('valeraCounter', JSON.stringify(participants));
   }, [participants]);
+
+  // Синхронизация с реальным временем
+  useEffect(() => {
+    // Обновляем локальных участников данными из реального времени
+    const syncParticipants = () => {
+      const realtimeParticipants = realtime.participants;
+      setParticipants(prev => {
+        const updated = [...prev];
+        realtimeParticipants.forEach(rtParticipant => {
+          const index = updated.findIndex(p => p.id === rtParticipant.id);
+          if (index >= 0) {
+            // Обновляем существующего участника
+            updated[index] = {
+              ...updated[index],
+              currentDays: rtParticipant.currentStreak,
+              totalResets: rtParticipant.totalFailures,
+              lastResetAt: rtParticipant.lastActivity.toISOString(),
+              isOnline: rtParticipant.isOnline
+            };
+          }
+        });
+        return updated;
+      });
+    };
+    
+    syncParticipants();
+  }, [realtime.participants]);
 
   const addParticipant = () => {
     if (!newParticipantName.trim()) {
@@ -81,15 +125,20 @@ const Index = () => {
       return;
     }
     
+    // Добавляем участника в реальном времени
+    const realtimeId = realtime.addParticipant(newParticipantName.trim());
+    
     const newParticipant: Participant = {
-      id: Date.now().toString(),
+      id: realtimeId,
       name: newParticipantName.trim(),
       currentDays: 0,
       bestRecord: 0,
       totalResets: 0,
-      joinedAt: new Date().toISOString(),
-      lastResetAt: null,
-      avatar: newParticipantAvatar || undefined,
+      createdAt: new Date().toISOString(),
+      lastResetAt: new Date().toISOString(),
+      achievements: [],
+      avatar: newParticipantAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${newParticipantName}`,
+      isOnline: true,
     };
     
     setParticipants(prev => [...prev, newParticipant]);
@@ -97,6 +146,11 @@ const Index = () => {
     setNewParticipantAvatar('');
     setSecretWord('');
     setIsDialogOpen(false);
+    
+    // Сохраняем ID текущего пользователя
+    localStorage.setItem('current_user_id', realtimeId);
+    setCurrentUserId(realtimeId);
+    
     toast({
       title: 'Участник добавлен',
       description: `${newParticipant.name} присоединился к челленджу!`,
@@ -106,9 +160,37 @@ const Index = () => {
   const removeParticipant = (participantId: string) => {
     const participant = participants.find(p => p.id === participantId);
     setParticipants(prev => prev.filter(p => p.id !== participantId));
+    
+    // Обновляем в реальном времени (помечаем как неактивного)
+    if (participant) {
+      realtime.updateParticipant(participantId, {
+        isOnline: false
+      });
+    }
+    
     toast({
       title: 'Участник удален',
       description: `${participant?.name} покинул челлендж`,
+    });
+  };
+  
+  const incrementCounter = (participantId: string) => {
+    const participant = participants.find(p => p.id === participantId);
+    
+    setParticipants(prev => prev.map(p => 
+      p.id === participantId ? { ...p, currentDays: p.currentDays + 1 } : p
+    ));
+    
+    // Обновляем в реальном времени
+    if (participant) {
+      realtime.updateParticipant(participantId, {
+        currentStreak: participant.currentDays + 1
+      });
+    }
+    
+    toast({
+      title: 'Счетчик увеличен',
+      description: `${participant?.name} прошел еще один день!`,
     });
   };
 
@@ -124,6 +206,8 @@ const Index = () => {
   };
 
   const resetCounter = (participantId: string) => {
+    const participant = participants.find(p => p.id === participantId);
+    
     setParticipants(prev => prev.map(p => {
       if (p.id === participantId) {
         const newBestRecord = Math.max(p.bestRecord, p.currentDays);
@@ -138,7 +222,14 @@ const Index = () => {
       return p;
     }));
     
-    const participant = participants.find(p => p.id === participantId);
+    // Обновляем в реальном времени
+    if (participant) {
+      realtime.updateParticipant(participantId, {
+        currentStreak: 0,
+        totalFailures: participant.totalResets + 1
+      });
+    }
+    
     toast({
       title: 'Счетчик сброшен',
       description: `${participant?.name} упомянул Валеру. Счетчик обнулен.`,
@@ -191,9 +282,10 @@ const Index = () => {
         </div>
 
         <Tabs defaultValue="counter" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-2xl p-1">
+          <TabsList className="grid w-full grid-cols-3 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-2xl p-1">
             <TabsTrigger value="counter" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-purple-500 data-[state=active]:text-white text-cyan-200 font-medium rounded-xl transition-all duration-300 hover:bg-white/10">⚡ Счетчик</TabsTrigger>
             <TabsTrigger value="stats" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-500 data-[state=active]:text-white text-cyan-200 font-medium rounded-xl transition-all duration-300 hover:bg-white/10">📊 Статистика</TabsTrigger>
+            <TabsTrigger value="realtime" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white text-cyan-200 font-medium rounded-xl transition-all duration-300 hover:bg-white/10">🌐 Онлайн</TabsTrigger>
           </TabsList>
 
           <TabsContent value="counter" className="space-y-6">
@@ -475,6 +567,21 @@ const Index = () => {
                   )}
                 </CardContent>
               </Card>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="realtime" className="space-y-6">
+            <div className="bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-2xl p-6">
+              <h2 className="text-2xl font-semibold text-white bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-4 flex items-center gap-2">
+                🌐 Режим реального времени
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              </h2>
+              <p className="text-cyan-200 mb-6">
+                Все участники и их статистика синхронизируются в реальном времени между всеми пользователями
+              </p>
+              <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4">
+                <RealtimeParticipants />
+              </div>
             </div>
           </TabsContent>
         </Tabs>
