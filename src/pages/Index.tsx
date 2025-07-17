@@ -17,6 +17,7 @@ interface Participant {
   totalResets: number;
   joinedAt: string;
   lastResetAt: string | null;
+  avatar?: string;
 }
 
 interface Achievement {
@@ -39,6 +40,7 @@ const achievements: Achievement[] = [
 const Index = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [newParticipantName, setNewParticipantName] = useState('');
+  const [newParticipantAvatar, setNewParticipantAvatar] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -64,15 +66,37 @@ const Index = () => {
       totalResets: 0,
       joinedAt: new Date().toISOString(),
       lastResetAt: null,
+      avatar: newParticipantAvatar || undefined,
     };
     
     setParticipants(prev => [...prev, newParticipant]);
     setNewParticipantName('');
+    setNewParticipantAvatar('');
     setIsDialogOpen(false);
     toast({
       title: 'Участник добавлен',
       description: `${newParticipant.name} присоединился к челленджу!`,
     });
+  };
+
+  const removeParticipant = (participantId: string) => {
+    const participant = participants.find(p => p.id === participantId);
+    setParticipants(prev => prev.filter(p => p.id !== participantId));
+    toast({
+      title: 'Участник удален',
+      description: `${participant?.name} покинул челлендж`,
+    });
+  };
+
+  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setNewParticipantAvatar(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const resetCounter = (participantId: string) => {
@@ -170,6 +194,23 @@ const Index = () => {
                         className="bg-white/10 border-2 border-cyan-500/30 text-white placeholder-cyan-300 focus:border-pink-500 transition-all duration-300"
                       />
                     </div>
+                    <div>
+                      <Label htmlFor="avatar" className="text-cyan-200 font-medium">Аватар участника</Label>
+                      <div className="flex items-center gap-3">
+                        <Input
+                          id="avatar"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarUpload}
+                          className="bg-white/10 border-2 border-cyan-500/30 text-white focus:border-pink-500 transition-all duration-300"
+                        />
+                        {newParticipantAvatar && (
+                          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-pink-500 flex-shrink-0">
+                            <img src={newParticipantAvatar} alt="Аватар" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <Button onClick={addParticipant} className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 font-medium rounded-xl">
                       🚀 Добавить
                     </Button>
@@ -196,19 +237,40 @@ const Index = () => {
                     <Card key={participant.id} className="relative overflow-hidden bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-2xl hover:border-pink-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-pink-500/20">
                       <CardHeader className="pb-3">
                         <div className="flex justify-between items-start">
-                          <div>
-                            <CardTitle className="text-lg text-white font-bold">{participant.name}</CardTitle>
-                            <CardDescription className="text-cyan-200">
-                              🎯 Присоединился {new Date(participant.joinedAt).toLocaleDateString()}
-                            </CardDescription>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-4xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
-                              {participant.currentDays}
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-pink-500 flex-shrink-0">
+                              {participant.avatar ? (
+                                <img src={participant.avatar} alt={participant.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-r from-pink-400 to-purple-400 flex items-center justify-center text-white font-bold">
+                                  {participant.name.charAt(0).toUpperCase()}
+                                </div>
+                              )}
                             </div>
-                            <div className="text-sm text-cyan-200">
-                              {participant.currentDays === 1 ? 'день' : 
-                               participant.currentDays < 5 ? 'дня' : 'дней'}
+                            <div>
+                              <CardTitle className="text-lg text-white font-bold">{participant.name}</CardTitle>
+                              <CardDescription className="text-cyan-200">
+                                🎯 Присоединился {new Date(participant.joinedAt).toLocaleDateString()}
+                              </CardDescription>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => removeParticipant(participant.id)}
+                              className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-medium rounded-lg border-2 border-white/20 shadow-lg hover:shadow-xl transition-all duration-300"
+                            >
+                              <Icon name="Trash2" size={16} />
+                            </Button>
+                            <div className="text-right">
+                              <div className="text-4xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+                                {participant.currentDays}
+                              </div>
+                              <div className="text-sm text-cyan-200">
+                                {participant.currentDays === 1 ? 'день' : 
+                                 participant.currentDays < 5 ? 'дня' : 'дней'}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -339,6 +401,15 @@ const Index = () => {
                                 'bg-gradient-to-r from-purple-400 to-purple-600'
                               }`}>
                                 {index + 1}
+                              </div>
+                              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 flex-shrink-0">
+                                {participant.avatar ? (
+                                  <img src={participant.avatar} alt={participant.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full bg-gradient-to-r from-pink-400 to-purple-400 flex items-center justify-center text-white font-bold text-xs">
+                                    {participant.name.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
                               </div>
                               <span className="font-medium text-white">{participant.name}</span>
                             </div>
