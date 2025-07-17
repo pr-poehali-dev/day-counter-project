@@ -41,6 +41,7 @@ const Index = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [newParticipantName, setNewParticipantName] = useState('');
   const [newParticipantAvatar, setNewParticipantAvatar] = useState('');
+  const [secretWord, setSecretWord] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -56,7 +57,23 @@ const Index = () => {
   }, [participants]);
 
   const addParticipant = () => {
-    if (!newParticipantName.trim()) return;
+    if (!newParticipantName.trim()) {
+      toast({
+        title: 'Ошибка',
+        description: 'Введите имя участника',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (secretWord !== 'Валера') {
+      toast({
+        title: 'Неверное секретное слово',
+        description: 'Для добавления участника требуется правильное секретное слово',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     const newParticipant: Participant = {
       id: Date.now().toString(),
@@ -72,6 +89,7 @@ const Index = () => {
     setParticipants(prev => [...prev, newParticipant]);
     setNewParticipantName('');
     setNewParticipantAvatar('');
+    setSecretWord('');
     setIsDialogOpen(false);
     toast({
       title: 'Участник добавлен',
@@ -190,7 +208,6 @@ const Index = () => {
                         value={newParticipantName}
                         onChange={(e) => setNewParticipantName(e.target.value)}
                         placeholder="Введите имя"
-                        onKeyPress={(e) => e.key === 'Enter' && addParticipant()}
                         className="bg-white/10 border-2 border-cyan-500/30 text-white placeholder-cyan-300 focus:border-pink-500 transition-all duration-300"
                       />
                     </div>
@@ -210,6 +227,22 @@ const Index = () => {
                           </div>
                         )}
                       </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="secret" className="text-cyan-200 font-medium flex items-center gap-2">
+                        🔐 Секретное слово
+                        <span className="text-xs text-pink-300">(обязательно)</span>
+                      </Label>
+                      <Input
+                        id="secret"
+                        type="password"
+                        value={secretWord}
+                        onChange={(e) => setSecretWord(e.target.value)}
+                        placeholder="Введите секретное слово"
+                        onKeyPress={(e) => e.key === 'Enter' && addParticipant()}
+                        className="bg-white/10 border-2 border-red-500/30 text-white placeholder-red-300 focus:border-pink-500 transition-all duration-300"
+                      />
+                      <p className="text-xs text-red-300 mt-1">Требуется секретное слово для добавления участника</p>
                     </div>
                     <Button onClick={addParticipant} className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 font-medium rounded-xl">
                       🚀 Добавить
