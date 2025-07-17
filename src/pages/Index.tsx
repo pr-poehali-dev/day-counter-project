@@ -35,6 +35,12 @@ const achievements: Achievement[] = [
   { level: 'gold', title: '🥇 Золотая стойкость', description: 'Три недели без срывов', icon: 'Crown', color: 'bg-gradient-to-r from-yellow-400 to-yellow-500', requiredDays: 21 },
   { level: 'platinum', title: '💎 Платиновая дисциплина', description: 'Месяц железной воли', icon: 'Star', color: 'bg-gradient-to-r from-purple-400 to-purple-600', requiredDays: 28 },
   { level: 'diamond', title: '💠 Алмазная стойкость', description: 'Пять недель совершенства', icon: 'Gem', color: 'bg-gradient-to-r from-cyan-400 to-blue-500', requiredDays: 35 },
+  { level: 'crown', title: '👑 Корона', description: 'Шесть недель абсолютной власти', icon: 'Crown', color: 'bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500', requiredDays: 42 },
+  { level: 'ace', title: '🃏 Ас', description: 'Семь недель мастерства', icon: 'Zap', color: 'bg-gradient-to-r from-red-400 via-red-500 to-orange-500', requiredDays: 49 },
+  { level: 'ace-master', title: '🎯 Ас-мастер', description: 'Восемь недель совершенного контроля', icon: 'Target', color: 'bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500', requiredDays: 56 },
+  { level: 'ace-dominator', title: '⚔️ Ас-доминатор', description: 'Девять недель безграничной силы', icon: 'Sword', color: 'bg-gradient-to-r from-red-500 via-pink-500 to-rose-600', requiredDays: 63 },
+  { level: 'immortal', title: '🌟 Бессмертный', description: 'Десять недель вечности', icon: 'Sparkles', color: 'bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500', requiredDays: 70 },
+  { level: 'god', title: '⚡ Бог', description: 'Одиннадцать недель божественной силы', icon: 'Zap', color: 'bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 shadow-yellow-400/50', requiredDays: 77 },
 ];
 
 const Index = () => {
