@@ -169,9 +169,18 @@ const Index = () => {
       
       <div className="container mx-auto px-4 py-8 relative z-10">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-4 animate-pulse">
-            Счетчик дней без упоминания Валеры
-          </h1>
+          <div className="relative inline-block">
+            <div 
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat rounded-2xl opacity-20 blur-sm"
+              style={{
+                backgroundImage: 'url(https://cdn.poehali.dev/files/dd199704-b88b-446d-8a2f-ec86154b553d.jpg)',
+                transform: 'scale(1.1)'
+              }}
+            />
+            <h1 className="relative text-5xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-4 animate-pulse px-8 py-4">
+              Счетчик дней без упоминания Валеры
+            </h1>
+          </div>
           <p className="text-xl text-cyan-200 font-medium">
             🚀 Челлендж на самоконтроль и дисциплину
           </p>
